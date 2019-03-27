@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "My Moleculer microservices project",
   "scripts": {
-    "dev": "moleculer-runner --repl --hot services",
+    "dev": "moleculer-runner --env --repl --hot services",
     "start": "moleculer-runner",
     "cli": "moleculer connect ",
     "ci": "jest --watch",
@@ -16,14 +16,22 @@
   ],
   "author": "",
   "devDependencies": {
-    "eslint": "^5.10.0",
-    "jest": "^23.6.0",
-    "jest-cli": "^23.6.0",
-    "moleculer-repl": "^0.5.3"
+    "eslint": "^5.15.3",
+    "jest": "^24.5.0",
+    "jest-cli": "^24.5.0",
+    "moleculer-repl": "^0.5.6"
   },
   "dependencies": {
-    "moleculer-web": "^0.8.0",
-    "moleculer": "^0.13.0"
+    "bcrypt": "^3.0.5",
+    "crypto": "^1.0.1",
+    "dotenv": "^7.0.0",
+    "helmet": "^3.16.0",
+    "jsonwebtoken": "^8.5.1",
+    "moleculer": "^0.13.8",
+    "moleculer-db": "^0.7.7",
+    "moleculer-db-adapter-mongo": "^0.4.2",
+    "moleculer-web": "^0.8.5",
+    "speakeasy": "^2.0.0"
   },
   "engines": {
     "node": ">= 8.x.x"
