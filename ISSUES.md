@@ -1,0 +1,2 @@
+1. npm install --save moleculer-mail
+npm WARN deprecated email-templates@2.7.1: If you are using <4.0.2, you may have an issue in production with <img> tags 'src' attribute being converted to an inlined base64 data-uri, as of v4.0.2+ we have specifically set 'images: false' in the options we pass to 'juice' so that images will not get converted this way.  See <https://github.com/niftylettuce/email-templates/issues/303> for more information and consider using 'nodemailer-base64-to-s3' as documented here <https://github.com/niftylettuce/email-templates\#plugins>

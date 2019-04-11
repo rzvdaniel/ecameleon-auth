@@ -3,7 +3,11 @@
 ## Helmetjs
 https://helmetjs.github.io
 
-npm install --save crypto
-npm install --save bcrypt
+npm install crypto --save 
+npm install bcrypt --save
 
+// Moleculer-mail has a few dependencies
+npm install --save moleculer-mail
+npm install --save node-sass
+npm install --save pug
 
