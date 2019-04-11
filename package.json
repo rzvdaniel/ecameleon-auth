@@ -19,7 +19,7 @@
     "eslint": "^5.15.3",
     "jest": "^24.5.0",
     "jest-cli": "^24.5.0",
-    "moleculer-repl": "^0.5.6"
+    "moleculer-repl": "^0.5.7"
   },
   "dependencies": {
     "bcrypt": "^3.0.5",
@@ -30,6 +30,9 @@
     "moleculer": "^0.13.8",
     "moleculer-db": "^0.7.7",
     "moleculer-db-adapter-mongo": "^0.4.2",
+    "moleculer-mail": "^1.2.2",
+    "node-sass": "^4.11.0",
+    "pug": "^2.0.3",
     "moleculer-web": "^0.8.5",
     "speakeasy": "^2.0.0"
   },

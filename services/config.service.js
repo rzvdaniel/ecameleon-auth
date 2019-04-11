@@ -25,11 +25,11 @@ module.exports = {
 	 */
 	settings: {
 		defaultConfig: {
-			"site.name": "KanTab",
+			"site.name": "eCameleon",
 			"site.url": process.env.NOW_URL || "http://localhost:3000",
 
 			"mail.enabled": true,
-			"mail.from": "no-reply@kantab.io",
+			"mail.from": "rzvdaniel@ecameleon.com",
 
 			"accounts.signup.enabled": true,
 			"accounts.username.enabled": true,
@@ -60,6 +60,7 @@ module.exports = {
 	 * Actions
 	 */
 	actions: {
+		
 		/**
 		 * Get configurations by key or keys
 		 *
@@ -67,18 +68,10 @@ module.exports = {
 		 * @param {String|Array<String>} key
 		 * @returns {Object|Array<String>}
 		 */
-		get: {
-			cache: {
-				keys: ["key"]
+		retrieve: {
+			params: {
+				key: "array",
 			},
-			/*params: [
-				{
-					key: "string"
-				},
-				{
-					key: { type: "array", items: "string" }
-				},
-			],*/
 			async handler(ctx) {
 				if (ctx.params.key == null)
 					throw new ValidationError("Param 'key' must be defined.", "ERR_KEY_NOT_DEFINED");
@@ -95,39 +88,39 @@ module.exports = {
 		 * @param {any} key
 		 * @returns {Object|Array<Object>}
 		 */
-		set: {
-			/*params: [
-				{
-					key: { type: "string" },
-					value: { type: "any" }
-				},
-				{
-					type: "array", items: {
-						type: "object", props: {
-							key: "string",
-							value: "any"
-						}
+		updateKey: {
+			params: {
+				key: { type: "string" },
+				value: { type: "any" }
+			},			
+			async handler(ctx) {			
+				const { changed, item } = await this.set(ctx.params.key, ctx.params.value);
+				const res = await this.transformDocuments(ctx, {}, item);
+				if (changed)
+					this.broker.broadcast(`${this.name}.${item.key}.changed`, res);
+
+				return res;
+			}
+		},
+
+		updateKeys: {
+			params: {
+				type: "array", items: {
+					type: "object", props: {
+						key: "string",
+						value: "any"
 					}
 				}
-			],*/
+			},
 			async handler(ctx) {
-				if (Array.isArray(ctx.params)) {
-					return this.Promise.all(ctx.params.map(async p => {
-						const { changed, item } = await this.set(p.key, p.value);
-						const res = await this.transformDocuments(ctx, {}, item);
-						if (changed)
-							this.broker.broadcast(`${this.name}.${item.key}.changed`, res);
-
-						return res;
-					}));
-				} else {
-					const { changed, item } = await this.set(ctx.params.key, ctx.params.value);
+				return this.Promise.all(ctx.params.map(async p => {
+					const { changed, item } = await this.set(p.key, p.value);
 					const res = await this.transformDocuments(ctx, {}, item);
 					if (changed)
 						this.broker.broadcast(`${this.name}.${item.key}.changed`, res);
 
 					return res;
-				}
+				}));
 			}
 		},
 

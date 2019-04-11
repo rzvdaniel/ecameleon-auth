@@ -10,19 +10,23 @@ const DbService 	= require("../mixins/db.mixin");
 const CacheCleaner 	= require("../mixins/cache.cleaner.mixin");
 const ConfigLoader 	= require("../mixins/config.mixin");
 const C 			= require("../constants");
+let path 			= require("path");
+const fs 			= require("fs");
+
+const { MoleculerRetryableError, MoleculerClientError } = require("moleculer").Errors;
 
 module.exports = {
 	name: "accounts",
 	version: 1,
 
 	mixins: [
-		DbService,
+		DbService("accounts"),
 		CacheCleaner([
 			"cache.clean.accounts"
 		]),
 		ConfigLoader([
-			// "site.**",
-			// "mail.**",
+			"site.**",
+			"mail.**",
 			"accounts.**"
 		])
 	],
@@ -151,11 +155,11 @@ module.exports = {
 				// Send email
 				if (user.verified) {
 					// Send welcome email
-					//this.sendMail(ctx, user, "welcome");
+					this.sendMail(ctx, user, "welcome");
 					user.token = await this.getToken(user);
 				} else {
 					// Send verification email
-					//this.sendMail(ctx, user, "activate", { token: entity.verificationToken });
+					this.sendMail(ctx, user, "activate", { token: entity.verificationToken });
 				}
 
 				return this.transformDocuments(ctx, {}, user);
@@ -184,13 +188,58 @@ module.exports = {
 		},
 
 		/**
-		 * Generate a token
+		 * Get user by email
 		 *
-		 * @param {Number} len Token length
+		 * @param {Context} ctx
+		 * @param {String} email
 		 */
-		generateToken(len = 25) {
-			return crypto.randomBytes(len).toString("hex");
+		async getUserByEmail(ctx, email) {
+			return await this.adapter.findOne({ email });
 		},
+
+		/**
+		 * Get user by username
+		 *
+		 * @param {Context} ctx
+		 * @param {String} username
+		 */
+		async getUserByUsername(ctx, username) {
+			return await this.adapter.findOne({ username });
+		},
+
+		/**
+		 * Send email to the user email address
+		 *
+		 * @param {Context} ctx
+		 * @param {Object} user
+		 * @param {String} template
+		 * @param {Object?} data
+		 */
+		async sendMail(ctx, user, template, data) {
+			if (!this.config["mail.enabled"])
+				return this.Promise.resolve(false);
+
+			var site = this.configObj.site;
+
+			try {
+				return await ctx.call(this.settings.actions.sendMail, {
+					to: user.email,
+					template: template,
+					data: _.defaultsDeep(data, {
+						user,
+						site: this.config["site.url"],
+						siteName: this.config["site.name"]
+					})
+				}, { retries: 3, timeout: 10000 });
+
+			} catch(err) {
+				/* istanbul ignore next */
+				this.logger.error("Send mail error!", err);
+				/* istanbul ignore next */
+				throw err;
+			}
+		},
+
 	},
 
 	/**
