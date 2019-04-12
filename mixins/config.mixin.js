@@ -40,7 +40,7 @@ module.exports = function(keys, opts) {
 				this[opts.objPropName] = {};
 
 			if (keys.length > 0) {
-				const items = await this.broker.call("v1.config.retrieve", { key: keys });
+				const items = await this.broker.call("v1.config.loadKeys", { key: keys });
 				if (items) {
 					items.forEach(item => {
 						this[opts.propName][item.key] = item.value;

@@ -68,7 +68,7 @@ module.exports = {
 		 * @param {String|Array<String>} key
 		 * @returns {Object|Array<String>}
 		 */
-		retrieve: {
+		loadKeys: {
 			params: {
 				key: "array",
 			},
@@ -81,14 +81,14 @@ module.exports = {
 		},
 
 		/**
-		 * Set configuration values by keys
+		 * Set configuration values by key
 		 *
 		 * @actions
 		 * @param {String} key
-		 * @param {any} key
+		 * @param {any} value
 		 * @returns {Object|Array<Object>}
 		 */
-		updateKey: {
+		setKey: {
 			params: {
 				key: { type: "string" },
 				value: { type: "any" }
@@ -103,7 +103,14 @@ module.exports = {
 			}
 		},
 
-		updateKeys: {
+		/**
+		 * Set configuration values by keys
+		 *
+		 * @actions
+		 * @param {Object|Array<Object>} items
+		 * @returns {Object|Array<Object>}
+		 */
+		setKeys: {
 			params: {
 				type: "array", items: {
 					type: "object", props: {
