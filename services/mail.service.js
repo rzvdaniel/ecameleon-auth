@@ -26,7 +26,7 @@ module.exports = {
 	 * Service settings
 	 */
 	settings: {
-		from: "noreply@ecameleon.com",
+		from: process.env.MAIL_NOREPLY,
 		transport: {
 			host: "smtp.mailtrap.io",
 			port: 2525,

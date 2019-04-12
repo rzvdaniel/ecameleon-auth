@@ -47,6 +47,7 @@ module.exports = function(collection, opts = {}) {
 			const testing = dbAdapterConfig === 'memory';
 		
 			this.logger.info("Connected to database.");
+			
 			/* istanbul ignore next */
 			if (!testing) {
 				// Create indexes
