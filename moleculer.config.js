@@ -127,7 +127,10 @@ module.exports = {
 	hotReload: false,
 
 	// Register custom middlewares
-	middlewares: [],
+	middlewares: [
+		require("./middlewares/CheckPermissions"),
+		require("./middlewares/FindEntity"),
+	],
 
 	// Called after broker created.
 	created(broker) {

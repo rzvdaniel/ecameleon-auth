@@ -35,8 +35,6 @@ module.exports = {
 	 * Service settings
 	 */
 	settings: {
-		rest: true,
-
 		actions: {
 			sendMail: "mail.send"
 		},
@@ -75,6 +73,33 @@ module.exports = {
 	 * Actions
 	 */
 	actions: {
+
+		// Change visibility of default actions
+		create: {
+			visibility: C.VISIBILITY_PROTECTED
+		},
+		list: {
+			visibility: C.VISIBILITY_PROTECTED,
+		},
+		find: {
+			visibility: C.VISIBILITY_PROTECTED,
+			graphql: {
+				query: "users(limit: Int, offset: Int, sort: String): [User]"
+			}
+		},
+		get: {
+			visibility: C.VISIBILITY_PROTECTED,
+			graphql: {
+				query: "user(id: String): User"
+			}
+		},
+		update: {
+			visibility: C.VISIBILITY_PROTECTED
+		},
+		remove: {
+			visibility: C.VISIBILITY_PROTECTED
+		},
+
 		/**
 		 * Register a new user account
 		 *
@@ -164,7 +189,476 @@ module.exports = {
 
 				return this.transformDocuments(ctx, {}, user);
 			}
-		}
+		},
+
+		/**
+		 * Verify an account
+		 */
+		verify: {
+			params: {
+				token: { type: "string" }
+			},
+			rest: true,
+			async handler(ctx) {
+				const user = await this.adapter.findOne({ verificationToken: ctx.params.token });
+
+				if (!user)
+					throw new MoleculerClientError("Invalid verification token!", 400, "INVALID_TOKEN");
+
+				const res = await this.adapter.updateById(user._id, { $set: {
+					verified: true,
+					verificationToken: null
+				} });
+
+				// Send welcome email
+				this.sendMail(ctx, res, "welcome");
+
+				return {
+					token: await this.getToken(res)
+				};
+			}
+		},
+
+		/**
+		 * Disable an account
+		 */
+		disable: {
+			params: {
+				id: { type: "string" }
+			},
+			needEntity: true,
+			async handler(ctx) {
+				const user = ctx.entity;
+				if (user.status == 0)
+					throw new MoleculerClientError("Account has already been disabled!", 400, "ERR_USER_ALREADY_DISABLED");
+
+				const res = await this.adapter.updateById(user._id, { $set: {
+					status: 0
+				} });
+
+				return {
+					status: res.status
+				};
+			}
+		},
+
+		/**
+		 * Enable an account
+		 */
+		enable: {
+			params: {
+				id: { type: "string" }
+			},
+			needEntity: true,
+			async handler(ctx) {
+				const user = ctx.entity;
+				if (user.status == 1)
+					throw new MoleculerClientError("Account has already been enabled!", 400, "ERR_USER_ALREADY_ENABLED");
+
+				const res = await this.adapter.updateById(user._id, { $set: {
+					status: 1
+				} });
+
+				return {
+					status: res.status
+				};
+			}
+		},
+
+		/**
+		 * Check passwordless token
+		 */
+		passwordless: {
+			params: {
+				token: { type: "string" }
+			},
+			rest: true,
+			async handler(ctx) {
+				if (!this.config["accounts.passwordless.enabled"])
+					throw new MoleculerClientError("Passwordless login is not allowed.", 400, "ERR_PASSWORDLESS_DISABLED");
+
+				const user = await this.adapter.findOne({ passwordlessToken: ctx.params.token });
+				if (!user)
+					throw new MoleculerClientError("Invalid token!", 400, "INVALID_TOKEN");
+
+				// Check status
+				if (user.status !== 1)
+					throw new MoleculerClientError("Account is disabled!", 400, "ERR_ACCOUNT_DISABLED");
+
+				// Check token expiration
+				if (user.passwordlessTokenExpires < Date.now())
+					throw new MoleculerClientError("Token expired!", 400, "TOKEN_EXPIRED");
+
+				// Verified account if not
+				if (!user.verified) {
+					await this.adapter.updateById(user._id, { $set: {
+						verified: true
+					} });
+				}
+
+				return {
+					token: await this.getToken(user)
+				};
+			}
+		},
+
+		/**
+		 * Start "forgot password" process
+		 */
+		forgotpassword: {
+			params: {
+				email: { type: "email" }
+			},
+			rest: true,
+			async handler(ctx) {
+				const token = this.generateToken();
+
+				const user = await this.getUserByEmail(ctx, ctx.params.email);
+				// Check email is exist
+				if (!user)
+					throw new MoleculerClientError("Email is not registered.", 400, "ERR_EMAIL_NOT_FOUND");
+
+				// Check verified
+				if (!user.verified)
+					throw new MoleculerClientError("Please activate your account!", 400, "ERR_ACCOUNT_NOT_VERIFIED");
+
+				// Check status
+				if (user.status !== 1)
+					throw new MoleculerClientError("Account is disabled!", 400, "ERR_ACCOUNT_DISABLED");
+
+				// Save the token to user
+				await this.adapter.updateById(user._id, { $set: {
+					resetToken: token,
+					resetTokenExpires: Date.now() + 3600 * 1000 // 1 hour
+				} });
+
+				// Send a passwordReset email
+				this.sendMail(ctx, user, "reset-password", { token });
+
+				return true;
+			}
+		},
+
+		/**
+		 * Reset password
+		 */
+		resetpassword: {
+			params: {
+				token: { type: "string" },
+				password: { type: "string", min: 8 }
+			},
+			rest: true,
+			async handler(ctx) {
+				// Check the token & expires
+				const user = await this.adapter.findOne({ resetToken: ctx.params.token });
+				if (!user)
+					throw new MoleculerClientError("Invalid token!", 400, "INVALID_TOKEN");
+
+				// Check status
+				if (user.status !== 1)
+					throw new MoleculerClientError("Account is disabled!", 400, "ERR_ACCOUNT_DISABLED");
+
+				if (user.resetTokenExpires < Date.now())
+					throw new MoleculerClientError("Token expired!", 400, "TOKEN_EXPIRED");
+
+				// Change the password
+				await this.adapter.updateById(user._id, { $set: {
+					password: await bcrypt.hash(ctx.params.password, 10),
+					passwordless: false,
+					verified: true,
+					resetToken: null,
+					resetTokenExpires: null
+				} });
+
+				// Send password-changed email
+				this.sendMail(ctx, user, "password-changed");
+
+				return {
+					token: await this.getToken(user)
+				};
+			}
+		},
+
+		/**
+		 * Handle local login
+		 */
+		login: {
+			params: {
+				email: { type: "string", optional: false },
+				password: { type: "string", optional: true },
+				token: { type: "string", optional: true }
+			},
+			rest: true,
+			graphql: {
+				mutation: "login(email: String!, password: String, token: String): LoginToken"
+			},
+			async handler(ctx) {
+				let query;
+
+				if (this.config["accounts.username.enabled"]) {
+					query = {
+						"$or": [
+							{ email: ctx.params.email },
+							{ username: ctx.params.email }
+						]
+					};
+				} else {
+					query = { email: ctx.params.email };
+				}
+
+				// Get user
+				const user = await this.adapter.findOne(query);
+				if (!user)
+					throw new MoleculerClientError("User not found!", 400, "ERR_USER_NOT_FOUND");
+
+				// Check verified
+				if (!user.verified) {
+					throw new MoleculerClientError("Please activate your account!", 400, "ERR_ACCOUNT_NOT_VERIFIED");
+				}
+
+				// Check status
+				if (user.status !== 1) {
+					throw new MoleculerClientError("Account is disabled!", 400, "ERR_ACCOUNT_DISABLED");
+				}
+
+				// Check passwordless login
+				if (user.passwordless == true && ctx.params.password)
+					throw new MoleculerClientError("This is a passwordless account! Please login without password.", 400, "ERR_PASSWORDLESS_WITH_PASSWORD");
+
+				// Authenticate
+				if (ctx.params.password) {
+					// Login with password
+					if (!(await bcrypt.compare(ctx.params.password, user.password)))
+						throw new MoleculerClientError("Wrong password!", 400, "ERR_WRONG_PASSWORD");
+
+				} else if (this.config["accounts.passwordless.enabled"]) {
+
+					if (!this.config["mail.enabled"])
+						throw new MoleculerClientError("Passwordless login is not available because mail transporter is not configured.", 400, "ERR_PASSWORDLESS_UNAVAILABLE");
+
+					// Send magic link
+					await this.sendMagicLink(ctx, user);
+
+					return {
+						passwordless: true,
+						email: user.email
+					};
+
+				} else {
+					throw new MoleculerClientError("Passwordless login is not allowed.", 400, "ERR_PASSWORDLESS_DISABLED");
+				}
+
+				// Check Two-factor authentication
+				if (user.totp && user.totp.enabled) {
+					if (!ctx.params.token)
+						throw new MoleculerClientError("Two-factor authentication is enabled. Please give the 2FA code.", 400, "ERR_MISSING_2FA_CODE");
+
+					if (!(await this.verify2FA(user.totp.secret, ctx.params.token)))
+						throw new MoleculerClientError("Invalid 2FA token!", 400, "TWOFACTOR_INVALID_TOKEN");
+				}
+
+				return {
+					token: await this.getToken(user)
+				};
+			}
+		},
+
+		/**
+		 * Handle social login.
+		 */
+		// NOT TESTED!
+		socialLogin: {
+			params: {
+				provider: { type: "string" },
+				profile: { type: "object" },
+				accessToken: { type: "string" },
+				refreshToken: { type: "string", optional: true },
+			},
+			async handler(ctx) {
+				const { provider, profile } = ctx.params;
+
+				const query = { [`socialLinks.${provider}`]: profile.socialID };
+				if (ctx.meta.user) {
+					// There is logged in user. Link to the logged in user
+					let user = await this.adapter.findOne(query);
+					if (user) {
+						if (user._id != ctx.meta.userID)
+							throw new MoleculerClientError("This social account has been linked to another account.", 400, "ERR_SOCIAL_ACCOUNT_MISMATCH");
+
+						// Same user
+						user.token = await this.getToken(user);
+						return this.transformDocuments(ctx, {}, user);
+
+					} else {
+						// Not found linked account. Create the link
+						user = await this.link(ctx.meta.userID, provider, profile);
+
+						user.token = await this.getToken(user);
+						return this.transformDocuments(ctx, {}, user);
+					}
+
+				} else {
+					// No logged in user
+					if (!profile.email)
+						throw new MoleculerClientError("Missing e-mail address in social profile", 400, "ERR_NO_SOCIAL_EMAIL");
+
+					let foundBySocialID = false;
+
+					let user = await this.adapter.findOne(query);
+					if (user) {
+						// User found.
+						foundBySocialID = true;
+					} else {
+						// Try to search user by email
+						user = await this.getUserByEmail(ctx, profile.email);
+					}
+
+					if (user) {
+						// Check status
+						if (user.status !== 1) {
+							throw new MoleculerClientError("Account is disabled!", 400, "ACCOUNT_DISABLED");
+						}
+
+						// Found the user by email.
+
+						if (!foundBySocialID) {
+							// Not found linked account. Create the link
+							user = await this.link(user._id, provider, profile);
+						}
+
+						user.token = await this.getToken(user);
+
+						// TODO: Hack to handle wrong "entity._id.toHexString is not a function" error in mongo adapter
+						user._id = this.decodeID(user._id);
+
+						return this.transformDocuments(ctx, {}, user);
+					}
+
+					if (!this.config["accounts.signup.enabled"])
+						throw new MoleculerClientError("Sign up is not available", 400, "ERR_SIGNUP_DISABLED");
+
+					// Create a new user and link
+					user = await ctx.call(`${this.fullName}.register`, {
+						username: profile.username || profile.email.split("@")[0],
+						password: await bcrypt.genSalt(),
+						email: profile.email,
+						firstName: profile.firstName,
+						lastName: profile.lastName,
+						avatar: profile.avatar
+					});
+
+					user = await this.link(user.id, provider, profile);
+
+					user.token = await this.getToken(user);
+
+					return this.transformDocuments(ctx, {}, user);
+				}
+			}
+		},
+
+		/**
+		 * Enable Two-Factor authentication (2FA)
+		 */
+		// NOT TESTED!
+		enable2Fa: {
+			params: {
+				token: { type: "string", optional: true }
+			},
+			rest: true,
+			permissions: [C.ROLE_AUTHENTICATED],
+			async handler(ctx) {
+				const user = await this.adapter.findById(ctx.meta.userID);
+				if (!user)
+					throw new MoleculerClientError("User not found!", 400, "USER_NOT_FOUND");
+
+				if (!ctx.params.token && (!user.totp || !user.totp.enabled)) {
+					// Generate a TOTP secret and send back otpauthURL & secret
+					const secret = speakeasy.generateSecret({ length: 10 });
+					await this.adapter.updateById(ctx.meta.userID, { $set: {
+						"totp.enabled": false,
+						"totp.secret": secret.base32
+					} });
+
+					const otpauthURL = speakeasy.otpauthURL({
+						secret: secret.ascii,
+						label: ctx.meta.user.email,
+						issuer: this.configObj.site.name
+					});
+
+					return {
+						secret: secret.base32,
+						otpauthURL
+					};
+				} else {
+					// Verify the token with secret
+					const secret = user.totp.secret;
+					if (!(await this.verify2FA(secret, ctx.params.token)))
+						throw new MoleculerClientError("Invalid token!", 400, "TWOFACTOR_INVALID_TOKEN");
+
+					await this.adapter.updateById(ctx.meta.userID, { $set: {
+						"totp.enabled": true,
+					} });
+
+					return true;
+				}
+			}
+		},
+
+		/**
+		 * Disable Two-Factor authentication (2FA)
+		 */
+		// NOT TESTED!
+		disable2Fa: {
+			params: {
+				token: "string"
+			},
+			rest: true,
+			permissions: [C.ROLE_AUTHENTICATED],
+			async handler(ctx) {
+				const user = await this.adapter.findById(ctx.meta.userID);
+				if (!user)
+					throw new MoleculerClientError("User not found!", 400, "USER_NOT_FOUND");
+
+				if (!user.totp || !user.totp.enabled)
+					throw new MoleculerClientError("Two-factor authentication is not enabled!", 400, "TWOFACTOR_NOT_ENABLED");
+
+				const secret = user.totp.secret;
+				if (!(await this.verify2FA(secret, ctx.params.token)))
+					throw new MoleculerClientError("Invalid token!", 400, "TWOFACTOR_INVALID_TOKEN");
+
+				await this.adapter.updateById(ctx.meta.userID, { $set: {
+					"totp.enabled": false,
+					"totp.secret": null,
+				} });
+
+				return true;
+			}
+		},
+
+		/**
+		 * Generate a Two-Factor authentication token (TOTP)
+		 * For tests
+		 */
+		// NOT TESTED!
+		generate2FaToken: {
+			visibility: "protected",
+			params: {
+				id: "string"
+			},
+			async handler(ctx) {
+				const user = await this.adapter.findById(ctx.params.id);
+				if (!user)
+					throw new MoleculerClientError("User not found!", 400, "USER_NOT_FOUND");
+
+				if (!user.totp || !user.totp.enabled)
+					throw new MoleculerClientError("Two-factor authentication is not enabled!", 400, "TWOFACTOR_NOT_ENABLED");
+
+				const secret = user.totp.secret;
+				const token = this.generate2FaToken(secret);
+
+				return { token };
+			}
+		},
 	},
 
 	/**
@@ -219,15 +713,13 @@ module.exports = {
 			if (!this.config["mail.enabled"])
 				return this.Promise.resolve(false);
 
-			var site = this.configObj.site;
-
 			try {
 				return await ctx.call(this.settings.actions.sendMail, {
 					to: user.email,
 					template: template,
 					data: _.defaultsDeep(data, {
 						user,
-						site: this.config["site.url"],
+						siteUrl: this.config["site.url"],
 						siteName: this.config["site.name"]
 					})
 				}, { retries: 3, timeout: 10000 });
@@ -240,6 +732,46 @@ module.exports = {
 			}
 		},
 
+		async getToken(user) {
+			return await this.generateJWT({ id: user._id.toString() });
+		},
+
+		/**
+		 * Generate a JWT token from user entity.
+		 *
+		 * @param {Object} payload
+		 * @param {String|Number} [expiresIn]
+		 */
+		generateJWT(payload, expiresIn) {
+			return new this.Promise((resolve, reject) => {
+				return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: expiresIn || this.config["accounts.jwt.expiresIn"] }, (err, token) => {
+					if (err) {
+						this.logger.warn("JWT token generation error:", err);
+						return reject(new MoleculerRetryableError("Unable to generate token", 500, "UNABLE_GENERATE_TOKEN"));
+					}
+
+					resolve(token);
+				});
+			});
+		},
+
+		/**
+		 * Verify a JWT token and return the decoded payload
+		 *
+		 * @param {String} token
+		 */
+		verifyJWT(token) {
+			return new this.Promise((resolve, reject) => {
+				jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+					if (err) {
+						this.logger.warn("JWT verifying error:", err);
+						return reject(new MoleculerClientError("Invalid token", 401, "INVALID_TOKEN"));
+					}
+
+					resolve(decoded);
+				});
+			});
+		},
 	},
 
 	/**
