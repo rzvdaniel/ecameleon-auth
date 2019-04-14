@@ -12,6 +12,7 @@ const ConfigLoader 	= require("../mixins/config.mixin");
 const C 			= require("../constants");
 let path 			= require("path");
 const fs 			= require("fs");
+const MongoAdapter 	= require("moleculer-db-adapter-mongo");
 
 const { MoleculerRetryableError, MoleculerClientError } = require("moleculer").Errors;
 
@@ -115,6 +116,7 @@ module.exports = {
 			},
 			rest: true,
 			async handler(ctx) {
+
 				if (!this.config["accounts.signup.enabled"])
 					throw new MoleculerClientError("Sign up is not available.", 400, "ERR_SIGNUP_DISABLED");
 
@@ -672,6 +674,61 @@ module.exports = {
 	 * Methods
 	 */
 	methods: {
+
+		/**
+		 * Seed an empty collection with an `admin` and a `test` users.
+		 */
+		async seedDB() {
+			const res = await this.adapter.insertMany([
+				// Administrator
+				{
+					username: "admin",
+					password: await this.hashPassword("admin"),
+					firstName: "Administrator",
+					lastName: "",
+					email: "admin@kantab.io",
+					avatar: "http://romaniarising.com/wp-content/uploads/2014/02/avatar-admin-robot-150x150.jpg",
+					roles: ["administrator"],
+					socialLinks: {},
+					status: 1,
+					plan: "full",
+					verified: true,
+					passwordless: false,
+					createdAt: Date.now(),
+				},
+
+				// Test user
+				{
+					username: "test",
+					password: await this.hashPassword("test"),
+					firstName: "Test",
+					lastName: "User",
+					email: "test@kantab.io",
+					avatar: "http://icons.iconarchive.com/icons/iconshock/real-vista-general/256/administrator-icon.png",
+					roles: ["user"],
+					socialLinks: {},
+					status: 1,
+					plan: "free",
+					verified: true,
+					passwordless: false,
+					createdAt: Date.now(),
+				}
+			]);
+
+			this.logger.info(`Generated ${res.length} users.`);
+		},
+
+		/**
+		 * Hashing a plaintext password
+		 *
+		 * @param {String} pass
+		 * @returns {Promise} hashed password
+		 */
+		async hashPassword(pass) {
+			const HASH_SALT_ROUND = 10;
+			return bcrypt.hash(pass, HASH_SALT_ROUND);
+		},
+
 		/**
 		 * Generate a token
 		 *

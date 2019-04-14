@@ -1,5 +1,8 @@
 "use strict";
 
+// Load the environment variables as early as possible
+require('dotenv').config();
+
 /**
  * Moleculer ServiceBroker configuration file
  * 

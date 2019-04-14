@@ -3,8 +3,6 @@
 const ApiGateway = require("moleculer-web");
 const helmet = require("helmet");
 
-require('dotenv').config();
-
 module.exports = {
 	name: "api",
 	mixins: [ApiGateway],

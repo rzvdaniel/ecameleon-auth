@@ -6,12 +6,10 @@ const mkdir			= require("mkdirp").sync;
 const DbService		= require("moleculer-db");
 const MongoAdapter 	= require("moleculer-db-adapter-mongo");
 
-
 module.exports = function(collection, opts = {}) {
 	let adapter;
-	const adapterConfig = process.env.DB_ADAPTER;
 
-	switch (adapterConfig) {
+	switch (process.env.DB_ADAPTER) {
 		case 'memory':
 			adapter = new DbService.MemoryAdapter();
 			break;
@@ -23,7 +21,7 @@ module.exports = function(collection, opts = {}) {
 			break;
 			
 		case 'mongo':
-			adapter = new MongoAdapter(process.env.MONGO_URI || process.env.DEFAULT_MONGO_URI, { useNewUrlParser: true });
+			adapter = new MongoAdapter(process.env.MONGO_URI || process.env.MONGO_URI_DEFAULT, { useNewUrlParser: true });
 			// Mongo has an internal reconnect logic
 			opts.autoReconnect = false;
 			break;
@@ -31,7 +29,8 @@ module.exports = function(collection, opts = {}) {
 
 	const schema = {
 		mixins: [DbService],
-		collection,
+		collection: collection,
+		adapter: adapter,
 
 		methods: {
 			entityChanged(type, json, ctx) {

@@ -11,3 +11,6 @@ npm install --save moleculer-mail
 npm install --save node-sass
 npm install --save pug
 
+// Database and Mongo adapter
+npm install moleculer-db moleculer-db-adapter-mongo --save
+
