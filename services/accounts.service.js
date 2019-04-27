@@ -725,8 +725,7 @@ module.exports = {
 		 * @returns {Promise} hashed password
 		 */
 		async hashPassword(pass) {
-			const HASH_SALT_ROUND = 10;
-			return bcrypt.hash(pass, HASH_SALT_ROUND);
+			return bcrypt.hash(pass, process.env.HASH_SALT_ROUND);
 		},
 
 		/**
