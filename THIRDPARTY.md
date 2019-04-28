@@ -18,5 +18,5 @@ npm i passport
 npm i passport-google-oauth20
 npm i passport-facebook
 npm i passport-github
+npm i passport-twitter
 npm i cookie
-
