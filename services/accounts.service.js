@@ -102,6 +102,42 @@ module.exports = {
 		},
 
 		/**
+		 * Get user by JWT token (for API GW authentication)
+		 *
+		 * @actions
+		 * @param {String} token - JWT token
+		 *
+		 * @returns {Object} Resolved user
+		 */
+		resolveToken: {
+			cache: {
+				keys: ["token"],
+				ttl: 60 * 60 // 1 hour
+			},
+			params: {
+				token: "string"
+			},
+			async handler(ctx) {
+				const decoded = await this.verifyJWT(ctx.params.token);
+				if (!decoded.id)
+					throw new MoleculerClientError("Invalid token", 401, "INVALID_TOKEN");
+
+				const user = await this.getById(decoded.id);
+
+				if (!user)
+					throw new MoleculerClientError("User is not registered", 401, "USER_NOT_FOUND");
+
+				if (!user.verified)
+					throw new MoleculerClientError("Please activate your account!", 401, "ERR_ACCOUNT_NOT_VERIFIED");
+
+				if (user.status !== 1)
+					throw new MoleculerClientError("User is disabled", 401, "USER_DISABLED");
+
+				return await this.transformDocuments(ctx, {}, user);
+			}
+		},
+
+		/**
 		 * Register a new user account
 		 *
 		 */
@@ -156,7 +192,7 @@ module.exports = {
 				if (!entity.avatar) {
 					// Default avatar as Gravatar
 					const md5 = crypto.createHash("md5").update(entity.email).digest("hex");
-					entity.avatar = `https://gravatar.com/avatar/${md5}?s=64&d=robohash`;
+					entity.avatar = `https://gravatar.com/avatar/${md5}?s=64&d=retro`;
 				}
 
 				// Generate passwordless token or hash password
@@ -331,7 +367,7 @@ module.exports = {
 				// Save the token to user
 				await this.adapter.updateById(user._id, { $set: {
 					resetToken: token,
-					resetTokenExpires: Date.now() + 3600 * 1000 // 1 hour
+					resetTokenExpires: Date.now() + Number(process.env.ACCOUNTS_RESET_TOKEN_EXPIRES)
 				} });
 
 				// Send a passwordReset email
@@ -382,6 +418,39 @@ module.exports = {
 		},
 
 		/**
+		 * Link account to a social account
+		 */
+		link: {
+			params: {
+				id: { type: "string" },
+				provider: { type: "string" },
+				profile: { type: "object" },
+			},
+			async handler(ctx) {
+				const res = await this.link(ctx.params.id, ctx.params.provider, ctx.params.profile);
+				return this.transformDocuments(ctx, {}, res);
+			}
+		},
+
+		/**
+		 * Unlink account from a social account
+		 */
+		unlink: {
+			params: {
+				id: { type: "string", optional: true },
+				provider: { type: "string" }
+			},
+			async handler(ctx) {
+				const id = ctx.params.id ? ctx.params.id : ctx.meta.userID;
+				if (!id)
+					throw new MoleculerClientError("Missing user ID!", 400, "MISSING_USER_ID");
+
+				const res = await this.unlink(id, ctx.params.provider);
+				return this.transformDocuments(ctx, {}, res);
+			}
+		},
+
+		/**
 		 * Handle local login
 		 */
 		login: {
@@ -391,9 +460,6 @@ module.exports = {
 				token: { type: "string", optional: true }
 			},
 			rest: true,
-			graphql: {
-				mutation: "login(email: String!, password: String, token: String): LoginToken"
-			},
 			async handler(ctx) {
 				let query;
 
@@ -468,18 +534,15 @@ module.exports = {
 		/**
 		 * Handle social login.
 		 */
-		// NOT TESTED!
 		socialLogin: {
 			params: {
 				provider: { type: "string" },
-				profile: { type: "object" },
-				accessToken: { type: "string" },
-				refreshToken: { type: "string", optional: true },
+				profile: { type: "object" }
 			},
 			async handler(ctx) {
 				const { provider, profile } = ctx.params;
-
 				const query = { [`socialLinks.${provider}`]: profile.socialID };
+
 				if (ctx.meta.user) {
 					// There is logged in user. Link to the logged in user
 					let user = await this.adapter.findOne(query);
@@ -561,7 +624,6 @@ module.exports = {
 		/**
 		 * Enable Two-Factor authentication (2FA)
 		 */
-		// NOT TESTED!
 		enable2Fa: {
 			params: {
 				token: { type: "string", optional: true }
@@ -609,7 +671,6 @@ module.exports = {
 		/**
 		 * Disable Two-Factor authentication (2FA)
 		 */
-		// NOT TESTED!
 		disable2Fa: {
 			params: {
 				token: "string"
@@ -641,7 +702,6 @@ module.exports = {
 		 * Generate a Two-Factor authentication token (TOTP)
 		 * For tests
 		 */
-		// NOT TESTED!
 		generate2FaToken: {
 			visibility: "protected",
 			params: {
@@ -660,6 +720,23 @@ module.exports = {
 
 				return { token };
 			}
+		},
+
+		/**
+		 * Send login magic link to user email
+		 *
+		 * @param {Context} ctx
+		 * @param {Object} user
+		 */
+		async sendMagicLink(ctx, user) {
+			const token = this.generateToken();
+
+			const usr = await this.adapter.updateById(user._id, { $set: {
+				passwordlessToken: token,
+				passwordlessTokenExpires: Date.now() + Number(process.env.ACCOUNTS_PASSWORDLESS_TOKEN_EXPIRES)
+			} });
+
+			return await this.sendMail(ctx, usr, "magic-link", { token });
 		},
 	},
 
@@ -687,7 +764,6 @@ module.exports = {
 					firstName: "Administrator",
 					lastName: "",
 					email: "admin@ecameleon.com",
-					avatar: "http://icons.iconarchive.com/icons/icons-land/vista-people/256/Office-Client-Female-Light-icon.png	",
 					roles: ["administrator"],
 					socialLinks: {},
 					status: 1,
@@ -704,7 +780,6 @@ module.exports = {
 					firstName: "Test",
 					lastName: "User",
 					email: "test@ecameleon.com",
-					avatar: "http://icons.iconarchive.com/icons/icons-land/vista-people/256/Occupations-Pilot-OldFashioned-Female-Light-icon.png",
 					roles: ["user"],
 					socialLinks: {},
 					status: 1,
@@ -725,8 +800,7 @@ module.exports = {
 		 * @returns {Promise} hashed password
 		 */
 		async hashPassword(pass) {
-			const HASH_SALT_ROUND = 10;
-			return bcrypt.hash(pass, HASH_SALT_ROUND);
+			return bcrypt.hash(pass, Number(process.env.ACCOUNTS_HASH_SALT_ROUND));
 		},
 
 		/**
@@ -798,10 +872,13 @@ module.exports = {
 		 *
 		 * @param {Object} payload
 		 * @param {String|Number} [expiresIn]
+		 * Expressed in seconds or a string describing a time span [zeit/ms](https://github.com/zeit/ms.js).  
+		 * Eg: 60, "2 days", "10h", "7d"
 		 */
 		generateJWT(payload, expiresIn) {
 			return new this.Promise((resolve, reject) => {
-				return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: expiresIn || this.config["accounts.jwt.expiresIn"] }, (err, token) => {
+				const jwtExpiresIn = expiresIn || this.config["accounts.jwt.expiresIn"];
+				return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: jwtExpiresIn }, (err, token) => {
 					if (err) {
 						this.logger.warn("JWT token generation error:", err);
 						return reject(new MoleculerRetryableError("Unable to generate token", 500, "UNABLE_GENERATE_TOKEN"));
@@ -828,6 +905,26 @@ module.exports = {
 					resolve(decoded);
 				});
 			});
+		},
+
+		/**
+		 * Link account to a social account
+		 */
+		async link(id, provider, profile) {
+			return await this.adapter.updateById(id, { $set: {
+				[`socialLinks.${provider}`]: profile.socialID,
+				verified: true, // if not verified yet via email
+				verificationToken: null
+			} });
+		},
+
+		/**
+		 * Unlink account from a social account
+		 */
+		async unlink(id, provider) {
+			return await this.adapter.updateById(id, { $unset: {
+				[`socialLinks.${provider}`]: 1
+			} });
 		},
 	},
 
