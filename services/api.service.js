@@ -4,11 +4,29 @@ const ApiGateway 			= require("moleculer-web");
 const _ 					= require("lodash");
 const helmet 				= require("helmet");
 const C 					= require("../constants");
+
+const PassportMixin 	= require("../mixins/passport.mixin");
+
 const { UnAuthorizedError } = ApiGateway.Errors;
 
 module.exports = {
 	name: "api",
-	mixins: [ApiGateway],
+	mixins: [
+		ApiGateway,
+
+		// Passport
+		PassportMixin({
+			routePath: "/auth",
+			localAuthAlias: "v1.accounts.login",
+			successRedirect: "/",
+			providers: {
+				google: process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
+				facebook: process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET,
+				github: process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET,
+				twitter: false
+			}
+		}),
+	],
 
 	// More info about settings: 
 	// https://moleculer.services/docs/0.13/moleculer-web.html
