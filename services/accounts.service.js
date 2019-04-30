@@ -10,9 +10,6 @@ const DbService 	= require("../mixins/db.mixin");
 const CacheCleaner 	= require("../mixins/cache.cleaner.mixin");
 const ConfigLoader 	= require("../mixins/config.mixin");
 const C 			= require("../constants");
-let path 			= require("path");
-const fs 			= require("fs");
-const MongoAdapter 	= require("moleculer-db-adapter-mongo");
 
 const { MoleculerRetryableError, MoleculerClientError } = require("moleculer").Errors;
 

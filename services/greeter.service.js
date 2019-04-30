@@ -2,6 +2,7 @@
 
 module.exports = {
 	name: "greeter",
+	version: 1,
 
 	/**
 	 * Service settings

@@ -11,6 +11,8 @@ const { UnAuthorizedError } = ApiGateway.Errors;
 
 module.exports = {
 	name: "api",
+	version: 1,
+	
 	mixins: [
 		ApiGateway,
 
