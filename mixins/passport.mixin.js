@@ -55,14 +55,14 @@ module.exports = function(mixinOptions) {
 
 					if (mixinOptions.cookieName !== false) {
 						res.setHeader("Set-Cookie", cookie.serialize(mixinOptions.cookieName || "jwt-token", req.user.token, Object.assign({
-							//httpOnly: true,
 							path: "/",
-							maxAge: 60 * 60 * 24 * 90 // 90 days
+							maxAge: process.env.JWT_SOCIAL_AUTH_TOKEN_MAX_AGE
 						}, mixinOptions.cookieOptions || {})));
 					}
 
 					this.logger.info(`Successful authentication with '${providerName}'.`);
 					this.logger.info("User", req.user);
+
 					this.sendRedirect(res, mixinOptions.successRedirect || "/", 302);
 				};
 			}
