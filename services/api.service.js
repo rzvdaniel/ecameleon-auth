@@ -33,7 +33,7 @@ module.exports = {
 	// More info about settings: 
 	// https://moleculer.services/docs/0.13/moleculer-web.html
 	settings: {
-		port: process.env.PORT || 3000,
+		port: process.env.PORT || 5000,
 
 		use: [
 			helmet()
@@ -87,18 +87,13 @@ module.exports = {
 				// Path prefix to this route
 				path: "/admin",
 
-				// Merge parameters from querystring, request params & body 
-				mergeParams: true,
-
-				mappingPolicy: "all",
-
 				// Use bodyparser module
 				bodyParsers: {
 					json: true,
 					urlencoded: { extended: true }
 				},
 
-				// Route CORS settings
+				//Route CORS settings
 				cors: {
 					origin: "*",
 					methods: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],
@@ -106,7 +101,7 @@ module.exports = {
 
 				// Whitelist of actions (array of string mask or regex)
 				whitelist: [
-					"greeter.*",
+					"v1.greeter.*",
 					"$node.*"
 				],
 
@@ -114,7 +109,7 @@ module.exports = {
 
 				roles: [C.ROLE_SYSTEM],
 
-				// Action aliases
+				//Action aliases
 				aliases: {
 					"health": "$node.health",
 					"custom"(req, res) {
