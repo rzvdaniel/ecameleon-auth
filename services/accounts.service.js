@@ -99,6 +99,46 @@ module.exports = {
 		},
 
 		/**
+		 * Get current user entity.
+		 *
+		 * @actions
+		 *
+		 * @returns {Object} User entity
+		 */
+		me: {
+			cache: {
+				keys: ["#userID"]
+			},
+			rest: true,
+			async handler(ctx) {
+				if (!ctx.meta.userID) {
+					return null;
+					//throw new MoleculerClientError("There is no logged in user!", 400, "NO_LOGGED_IN_USER");
+				}
+
+				const user = await this.getById(ctx.meta.userID);
+				if (!user) {
+					return null;
+					//throw new MoleculerClientError("User not found!", 400, "USER_NOT_FOUND");
+				}
+
+				// Check verified
+				if (!user.verified) {
+					return null;
+					//throw new MoleculerClientError("Please activate your account!", 400, "ERR_ACCOUNT_NOT_VERIFIED");
+				}
+
+				// Check status
+				if (user.status !== 1) {
+					return null;
+					//throw new MoleculerClientError("Account is disabled!", 400, "ERR_ACCOUNT_DISABLED");
+				}
+
+				return await this.transformDocuments(ctx, {}, user);
+			}
+		},
+
+		/**
 		 * Get user by JWT token (for API GW authentication)
 		 *
 		 * @actions
@@ -109,7 +149,7 @@ module.exports = {
 		resolveToken: {
 			cache: {
 				keys: ["token"],
-				ttl: 60 * 60 // 1 hour
+				ttl: process.env.JWT_AUTH_TOKEN_CACHE_EXPIRES
 			},
 			params: {
 				token: "string"
