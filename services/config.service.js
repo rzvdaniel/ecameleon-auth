@@ -26,7 +26,7 @@ module.exports = {
 	settings: {
 		defaultConfig: {
 			"site.name": process.env.SITE_NAME,
-			"site.url": process.env.NOW_URL || "http://localhost:5000",
+			"site.url": process.env.NOW_URL || "http://localhost:4000",
 
 			"mail.enabled": process.env.MAIL_ENABLED,
 			"mail.from": process.env.MAIL_NOREPLY,
