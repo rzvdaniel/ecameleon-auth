@@ -33,14 +33,11 @@ module.exports = {
 	// More info about settings: 
 	// https://moleculer.services/docs/0.13/moleculer-web.html
 	settings: {
-		port: process.env.PORT || 5000,
+		port: process.env.PORT || 4000,
 
 		use: [
 			helmet()
 		],
-
-		// Exposed global path prefix
-		path: "/",
 
 		routes: [
 			
@@ -106,6 +103,8 @@ module.exports = {
 				],
 
 				authorization: true,
+
+				autoAliases: true,
 
 				roles: [C.ROLE_SYSTEM],
 

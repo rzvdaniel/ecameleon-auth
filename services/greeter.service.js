@@ -1,82 +1,69 @@
-"use strict";
-
+// greeter.service.js
 module.exports = {
 	name: "greeter",
 	version: 1,
 
-	/**
-	 * Service settings
-	 */
-	settings: {
-
-	},
-
-	/**
-	 * Service dependencies
-	 */
-	dependencies: [],	
-
-	/**
-	 * Actions
-	 */
 	actions: {
 
-		/**
-		 * Say a 'Hello'
-		 *
-		 * @returns
-		 */
-		hello() {
-			return "Hello Moleculer";
+		// example: {
+		// 	// Expose as "/v1/greeter/:id"
+		// 	rest: "GET /:id",
+		// 	// 	type ActionVisibility = "published" | "public" | "protected" | "private"
+		// 	visibility: 'published',
+		// 	handler(ctx) {
+		// 		return 'get';
+		// 	}
+		// },
+
+		hi() {
+			return "Hi Moleculer";
 		},
 
-		/**
-		 * Welcome a username
-		 *
-		 * @param {String} name - User name
-		 */
-		welcome: {
-			params: {
-				name: "string"
-			},
+		hello: {
+			rest: "GET /hello",
 			handler(ctx) {
-				return `Welcome, ${ctx.params.name}`;
+				return "Hello World";
 			}
-		}
-	},
+		},
 
-	/**
-	 * Events
-	 */
-	events: {
+		list: {
+			// Expose as "/v1/greeter/"
+			rest: "GET /",
+			handler(ctx) {
+				return 'list';
+			},
+		},
 
-	},
+		get: {
+			// Expose as "/v1/greeter/:id"
+			rest: "GET /:id",
+			handler(ctx) {
+				return 'get';
+			}
+		},
 
-	/**
-	 * Methods
-	 */
-	methods: {
+		create: {
+			// Expose as "/v1/greeter/"
+			rest: "POST /",
+			handler(ctx) {
+				return 'create';
+			}
+		},
 
-	},
+		update: {
+			// Expose as "/v1/greeter/:id"
+			rest: "PUT /:id",
+			handler(ctx) {
+				return 'update';
+			}
+		},
 
-	/**
-	 * Service created lifecycle event handler
-	 */
-	created() {
-
-	},
-
-	/**
-	 * Service started lifecycle event handler
-	 */
-	started() {
-
-	},
-
-	/**
-	 * Service stopped lifecycle event handler
-	 */
-	stopped() {
-
+		remove: {
+			// Expose as "/v1/greeter/:id"
+			rest: "DELETE /:id",
+			handler(ctx) {
+				return 'remove';
+			}
+		},	
 	}
 };
