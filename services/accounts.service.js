@@ -212,15 +212,16 @@ module.exports = {
 				// Create new user
 				const user = await this.adapter.insert(entity);
 
-				// Send email
-				if (user.verified) {
-					// Send welcome email
-					this.sendMail(ctx, user, "welcome");
-					user.token = await this.getToken(user);
-				} else {
-					// Send verification email
-					this.sendMail(ctx, user, "activate", { token: entity.verificationToken });
-				}
+				if (this.config["mail.enabled"]) {
+					if (user.verified) {
+						// Send welcome email
+						this.sendMail(ctx, user, "welcome");
+						user.token = await this.getToken(user);
+					} else {
+						// Send verification email
+						this.sendMail(ctx, user, "activate", { token: entity.verificationToken });
+					}
+				}			
 
 				return this.transformDocuments(ctx, {}, user);
 			}
@@ -245,8 +246,10 @@ module.exports = {
 					verificationToken: null
 				} });
 
-				// Send welcome email
-				this.sendMail(ctx, res, "welcome");
+				if (this.config["mail.enabled"]) {
+					// Send welcome email
+					this.sendMail(ctx, res, "welcome");
+				}
 
 				return {
 					token: await this.getToken(res)
@@ -367,8 +370,10 @@ module.exports = {
 					resetTokenExpires: Date.now() + Number(process.env.ACCOUNTS_RESET_TOKEN_EXPIRES)
 				} });
 
-				// Send a passwordReset email
-				this.sendMail(ctx, user, "reset-password", { token });
+				if (this.config["mail.enabled"]) {
+					// Send a passwordReset email
+					this.sendMail(ctx, user, "reset-password", { token });
+				}
 
 				return true;
 			}
@@ -405,8 +410,10 @@ module.exports = {
 					resetTokenExpires: null
 				} });
 
-				// Send password-changed email
-				this.sendMail(ctx, user, "password-changed");
+				if (this.config["mail.enabled"]) {
+					// Send password-changed email
+					this.sendMail(ctx, user, "password-changed");
+				}
 
 				return {
 					token: await this.getToken(user)
