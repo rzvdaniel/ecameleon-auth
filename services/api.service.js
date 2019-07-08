@@ -1,10 +1,10 @@
 "use strict";
 
-const ApiGateway 			= require("moleculer-web");
-const _ 					= require("lodash");
-const helmet 				= require("helmet");
-const C 					= require("../constants");
+const ApiGateway 		= require("moleculer-web");
+const _ 				= require("lodash");
+const helmet 			= require("helmet");
 
+const C 				= require("../constants");
 const PassportMixin 	= require("../mixins/passport.mixin");
 
 const { UnAuthorizedError } = ApiGateway.Errors;
@@ -44,13 +44,7 @@ module.exports = {
 			{
 				// Path prefix to this route
 				path: "/api",
-
-				authorization: false,
-
-				autoAliases: true,
 				
-				aliases: {},
-
 				camelCaseNames: true,
 
 				bodyParsers: {
@@ -74,67 +68,7 @@ module.exports = {
 						resolve(data);
 					});
 				},
-			},
-
-			/**
-			 * This route demonstrates a protected `/admin/greeter` path to access `greeter.*` & internal actions.
-			 * To access them, you need to login first & use the received token in header
-			 */
-			{
-				// Path prefix to this route
-				path: "/admin",
-
-				// Use bodyparser module
-				bodyParsers: {
-					json: true,
-					urlencoded: { extended: true }
-				},
-
-				//Route CORS settings
-				cors: {
-					origin: "*",
-					methods: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],
-				},
-
-				// Whitelist of actions (array of string mask or regex)
-				whitelist: [
-					"v1.greeter.*",
-					"$node.*"
-				],
-
-				authorization: true,
-
-				autoAliases: true,
-
-				roles: [C.ROLE_SYSTEM],
-
-				//Action aliases
-				aliases: {
-					"health": "$node.health",
-					"custom"(req, res) {
-						res.writeHead(201);
-						res.end();
-					}
-				},
-
-				onBeforeCall(ctx, route, req, res) {
-					this.logger.info("onBeforeCall in protected route");
-					ctx.meta.authToken = req.headers["authorization"];
-				},
-
-				onAfterCall(ctx, route, req, res, data) {
-					this.logger.info("onAfterCall in protected route");
-					res.setHeader("X-Custom-Header", "Authorized path");
-					return data;
-				},
-
-				// Route error handler
-				onError(req, res, err) {
-					res.setHeader("Content-Type", "text/plain");
-					res.writeHead(err.code || 500);
-					res.end("Route error: " + err.message);
-				}
-			},
+			}
 		],
 
 		// Serve assets from "public" folder
