@@ -1,15 +1,16 @@
 "use strict";
 
-const crypto 		= require("crypto");
-const bcrypt 		= require("bcrypt");
-const _ 			= require("lodash");
-const jwt 			= require("jsonwebtoken");
-const speakeasy		= require("speakeasy");
+const crypto 			= require("crypto");
+const bcrypt 			= require("bcrypt");
+const _ 				= require("lodash");
+const jwt 				= require("jsonwebtoken");
+const speakeasy			= require("speakeasy");
 
-const DbService 	= require("../mixins/db.mixin");
-const CacheCleaner 	= require("../mixins/cache.cleaner.mixin");
-const ConfigLoader 	= require("../mixins/config.mixin");
-const C 			= require("../constants");
+const DbService 		= require("../mixins/db.mixin");
+const CacheCleaner 		= require("../mixins/cache.cleaner.mixin");
+const ConfigLoader 		= require("../mixins/config.mixin");
+const SecureAutoalias 	= require("../mixins/secureautoalias.mixin");
+const C 				= require("../constants");
 
 const { MoleculerRetryableError, MoleculerClientError } = require("moleculer").Errors;
 
@@ -26,7 +27,8 @@ module.exports = {
 			"site.**",
 			"mail.**",
 			"accounts.**"
-		])
+		]),
+		SecureAutoalias
 	],
 
 	/**
@@ -71,32 +73,6 @@ module.exports = {
 	 * Actions
 	 */
 	actions: {
-
-		// Change visibility of default actions
-		create: {
-			visibility: C.VISIBILITY_PROTECTED
-		},
-		list: {
-			visibility: C.VISIBILITY_PROTECTED,
-		},
-		find: {
-			visibility: C.VISIBILITY_PROTECTED,
-			graphql: {
-				query: "users(limit: Int, offset: Int, sort: String): [User]"
-			}
-		},
-		get: {
-			visibility: C.VISIBILITY_PROTECTED,
-			graphql: {
-				query: "user(id: String): User"
-			}
-		},
-		update: {
-			visibility: C.VISIBILITY_PROTECTED
-		},
-		remove: {
-			visibility: C.VISIBILITY_PROTECTED
-		},
 
 		/**
 		 * Get user by JWT token (for API GW authentication)
