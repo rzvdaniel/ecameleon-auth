@@ -16,20 +16,20 @@
   ],
   "author": "",
   "devDependencies": {
-    "eslint": "^5.15.3",
-    "jest": "^24.5.0",
-    "jest-cli": "^24.5.0",
+    "eslint": "^6.0.1",
+    "jest": "^24.8.0",
+    "jest-cli": "^24.8.0",
     "moleculer-repl": "^0.5.7"
   },
   "dependencies": {
     "bcrypt": "^3.0.5",
-    "cookie": "^0.3.1",
+    "cookie": "^0.4.0",
     "crypto": "^1.0.1",
-    "dotenv": "^7.0.0",
+    "dotenv": "^8.0.0",
     "handlebars": "^4.1.2",
-    "helmet": "^3.16.0",
+    "helmet": "^3.18.0",
     "jsonwebtoken": "^8.5.1",
-    "moleculer": "^v0.14.0-beta1",
+    "moleculer": "^0.13.9",
     "moleculer-db": "^0.8.1",
     "moleculer-db-adapter-mongo": "^0.4.3",
     "moleculer-mail": "^1.2.2",
@@ -40,7 +40,7 @@
     "passport-github": "^1.1.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-twitter": "^1.0.4",
-    "pug": "^2.0.3",
+    "pug": "^2.0.4",
     "speakeasy": "^2.0.0"
   },
   "engines": {
