@@ -499,10 +499,9 @@ module.exports = {
 						throw new MoleculerClientError("Invalid 2FA token!", 400, "TWOFACTOR_INVALID_TOKEN");
 				}
 
-				// Attach token to user
-				user.token = await this.getToken(user);
-
-				return user;
+				return {
+					token: await this.getToken(user)
+				};
 			}
 		},
 
