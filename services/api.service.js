@@ -90,6 +90,55 @@ module.exports = {
 						resolve(data);
 					});
 				},
+			},
+
+			{
+				// Path prefix to this route
+				path: "/admin",
+
+				// Use bodyparser module
+				bodyParsers: {
+					json: true,
+					urlencoded: { extended: true }
+				},
+
+				// Route CORS settings
+				cors: {
+					origin: "*",
+					methods: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],
+				},
+
+				// Whitelist of actions (array of string mask or regex)
+				whitelist: [
+					"v1.users.*",
+					"$node.*"
+				],
+
+				authorization: true,
+
+				autoAliases: true,
+
+				aliases: {},
+
+				//roles: [C.ROLE_SYSTEM],
+
+				onBeforeCall(ctx, route, req, res) {
+					this.logger.info("onBeforeCall in protected route");
+					ctx.meta.authToken = req.headers["authorization"];
+				},
+
+				onAfterCall(ctx, route, req, res, data) {
+					this.logger.info("onAfterCall in protected route");
+					res.setHeader("X-Custom-Header", "Authorized path");
+					return data;
+				},
+
+				// Route error handler
+				onError(req, res, err) {
+					res.setHeader("Content-Type", "text/plain");
+					res.writeHead(err.code || 500);
+					res.end("Route error: " + err.message);
+				}
 			}
 		],
 
