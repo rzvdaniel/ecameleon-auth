@@ -30,6 +30,7 @@
     "helmet": "^3.20.0",
     "jsonwebtoken": "^8.5.1",
     "moleculer": "^0.13.9",
+    "moleculer-apollo-server": "^0.1.2",
     "moleculer-db": "^0.8.2",
     "moleculer-db-adapter-mongo": "^0.4.5",
     "moleculer-mail": "^1.2.2",

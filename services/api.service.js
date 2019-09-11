@@ -1,12 +1,12 @@
 "use strict";
 
-const ApiGateway 		= require("moleculer-web");
-const _ 				= require("lodash");
-const helmet 			= require("helmet");
+const ApiGateway = require("moleculer-web");
+const _ = require("lodash");
+const helmet = require("helmet");
 
-const C 				= require("../constants");
-const PassportMixin 	= require("../mixins/passport.mixin");
-
+const C = require("../constants");
+const PassportMixin = require("../mixins/passport.mixin");
+const { ApolloService } = require("moleculer-apollo-server");
 const { UnAuthorizedError } = ApiGateway.Errors;
 
 module.exports = {
@@ -28,6 +28,32 @@ module.exports = {
 				twitter: false
 			}
 		}),
+
+		// GraphQL Apollo Server
+		ApolloService({
+
+			// Global GraphQL typeDefs
+			typeDefs: ``,
+
+			// Global resolvers
+			resolvers: {},
+
+			// API Gateway route options
+			routeOptions: {
+					path: "/graphql",
+					cors: true,
+					mappingPolicy: "restrict"
+			},
+
+			// https://www.apollographql.com/docs/apollo-server/v2/api/apollo-server.html
+			serverOptions: {
+					tracing: true,
+
+					engine: {
+							apiKey: process.env.APOLLO_ENGINE_KEY
+					}
+			}
+		})
 	],
 
 	// More info about settings: 
