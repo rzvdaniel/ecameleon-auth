@@ -1,13 +1,19 @@
 "use strict";
 
-const ApiGateway = require("moleculer-web");
-const _ = require("lodash");
-const helmet = require("helmet");
+const ApiGateway 										= require("moleculer-web");
+const { UnAuthorizedError } 				= ApiGateway.Errors;
 
-const C = require("../constants");
-const PassportMixin = require("../mixins/passport.mixin");
-const { ApolloService } = require("moleculer-apollo-server");
-const { UnAuthorizedError } = ApiGateway.Errors;
+const _ 														= require("lodash");
+const helmet 												= require("helmet");
+const { ApolloService } 						= require("moleculer-apollo-server");
+
+const { GraphQLError } 							= require("graphql");
+const Kind 													= require("graphql/language").Kind;
+const depthLimit 										= require("graphql-depth-limit");
+const { createComplexityLimitRule } = require("graphql-validation-complexity");
+
+const C 														= require("../constants");
+const PassportMixin 								= require("../mixins/passport.mixin");
 
 module.exports = {
 	name: "api",
@@ -33,26 +39,56 @@ module.exports = {
 		ApolloService({
 
 			// Global GraphQL typeDefs
-			typeDefs: ``,
+			typeDefs: `
+				scalar Date
+			`,
 
 			// Global resolvers
-			resolvers: {},
+			resolvers: {
+				Date: {
+					__parseValue(value) {
+						return new Date(value); // value from the client
+					},
+					__serialize(value) {
+						return value.getTime(); // value sent to the client
+					},
+					__parseLiteral(ast) {
+						if (ast.kind === Kind.INT)
+							return parseInt(ast.value, 10); // ast value is always in string format
+
+						return null;
+					}
+				}
+			},
 
 			// API Gateway route options
 			routeOptions: {
-					path: "/graphql",
-					cors: true,
-					mappingPolicy: "restrict"
+				authorization: true,
+				path: "/graphql",
+				cors: true,
+				mappingPolicy: "restrict"
 			},
 
 			// https://www.apollographql.com/docs/apollo-server/v2/api/apollo-server.html
 			serverOptions: {
 					tracing: true,
+					introspection: true,
 
 					engine: {
 							apiKey: process.env.APOLLO_ENGINE_KEY
 					}
-			}
+			},
+
+			validationRules: [
+				depthLimit(10),
+				createComplexityLimitRule(1000, {
+					createError(cost, documentNode) {
+						const error = new GraphQLError("custom error", [documentNode]);
+						error.meta = { cost };
+						return error;
+					}
+				})
+			]
 		})
 	],
 
