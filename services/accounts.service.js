@@ -1,16 +1,16 @@
 "use strict";
 
-const crypto 			= require("crypto");
-const bcrypt 			= require("bcrypt");
-const _ 				= require("lodash");
-const jwt 				= require("jsonwebtoken");
-const speakeasy			= require("speakeasy");
+const crypto = require("crypto");
+const bcrypt = require("bcrypt");
+const _ = require("lodash");
+const jwt = require("jsonwebtoken");
+const speakeasy	= require("speakeasy");
 
-const DbService 		= require("../mixins/db.mixin");
-const CacheCleaner 		= require("../mixins/cache.cleaner.mixin");
-const ConfigLoader 		= require("../mixins/config.mixin");
-const SecureAutoalias 	= require("../mixins/secureautoalias.mixin");
-const C 				= require("../constants");
+const DbService = require("../mixins/db.mixin");
+const CacheCleaner = require("../mixins/cache.cleaner.mixin");
+const ConfigLoader = require("../mixins/config.mixin");
+const SecureAutoalias = require("../mixins/secureautoalias.mixin");
+const C = require("../constants");
 
 const { MoleculerRetryableError, MoleculerClientError } = require("moleculer").Errors;
 
@@ -238,7 +238,10 @@ module.exports = {
 			params: {
 				id: { type: "string" }
 			},
+			// needEntity attribute triggers the FindEntity middleware
+			// which is populating the ctx.entity by finding it using the passed user id
 			needEntity: true,
+			// Expecting user id as parameter
 			async handler(ctx) {
 				const user = ctx.entity;
 				if (user.status == 0)
@@ -261,7 +264,10 @@ module.exports = {
 			params: {
 				id: { type: "string" }
 			},
+			// needEntity attribute triggers the FindEntity middleware
+			// which is populating the ctx.entity by finding it using the passed user id
 			needEntity: true,
+			// Expecting user id as parameter
 			async handler(ctx) {
 				const user = ctx.entity;
 				if (user.status == 1)
@@ -401,6 +407,7 @@ module.exports = {
 				provider: { type: "string" },
 				profile: { type: "object" },
 			},
+			permissions: [C.ROLE_AUTHENTICATED],
 			async handler(ctx) {
 				const res = await this.link(ctx.params.id, ctx.params.provider, ctx.params.profile);
 				return this.transformDocuments(ctx, {}, res);
@@ -415,6 +422,7 @@ module.exports = {
 				id: { type: "string", optional: true },
 				provider: { type: "string" }
 			},
+			permissions: [C.ROLE_AUTHENTICATED],
 			async handler(ctx) {
 				const id = ctx.params.id ? ctx.params.id : ctx.meta.userID;
 				if (!id)
