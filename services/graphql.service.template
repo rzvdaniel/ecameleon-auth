@@ -23,21 +23,24 @@ module.exports = {
 	actions: {
 
 		list: {
+			// Expose as "v1/users/"
 			rest: "GET /",
 			graphql: {
 				query: "users(limit: Int, offset: Int, sort: String): [User]",
 			},
-			visibility: C.VISIBILITY_PUBLISHED,
       async handler(ctx) {
         return await this.adapter.find(ctx.params);
       }
 		},
 		create: {
+			// Expose as "v1/users/"
+			//visibility: C.VISIBILITY_PUBLISHED,
 			rest: "POST /",
 			graphql: {
 				mutation: "create(username: String, firstName: String, lastName: String, email: String): CreateUser",
 				type: UserType.CreateUser
 			},
+			permissions: [C.ROLE_AUTHENTICATED],
       async handler(ctx) {
 				const params = ctx.params;
         const user = {
