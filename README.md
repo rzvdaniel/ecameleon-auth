@@ -1,6 +1,8 @@
 # ecameleon-auth
 eCameleon Auth Server
 
+Authentication API based on Moleculer framework.
+
 [![Moleculer](https://badgen.net/badge/Powered%20by/Moleculer/0e83cd)](https://moleculer.services)
 
 ## NPM scripts
